@@ -10,7 +10,6 @@ on:
     branches:
       - develop
       - main
-      - feature/ci-auth
 permissions:
   contents: write
 
@@ -32,7 +31,7 @@ jobs:
     with:
       service-name: auth-service
       service-path: .
-      runtime: node
+      runtime: python
     secrets:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
