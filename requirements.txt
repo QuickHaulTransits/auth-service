@@ -1,0 +1,23 @@
+fastapi
+uvicorn[standard]
+motor
+redis
+python-jose[cryptography]
+passlib[bcrypt]
+pydantic-settings
+python-dotenv
+email-validator
+aiosmtplib
+
+# Additional packages for enhanced booking system
+pydantic[email]
+httpx
+requests
+twilio
+python-dateutil
+pytz
+pytest
+pytest-asyncio
+black
+isort
+flake8
