@@ -41,12 +41,10 @@ jobs:
     if: needs.sca.outputs.critical-found == 'true'
     uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_notify.yml@feature/templates
     with:
-      subject: "🚨 Snyk: Critical Vulnerabilities in auth-service"
-      body: "Critical/High vulnerabilities found in auth-service dependencies."
       service-name: auth-service
-      artifact-name: snyk-report-auth-service
     secrets:
       BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+      ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
 
   # ─── Temp Docker Build + Trivy Scan ───
   build:
@@ -63,12 +61,10 @@ jobs:
     if: needs.build.outputs.trivy-critical == 'true'
     uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_notify.yml@feature/templates
     with:
-      subject: "🚨 Trivy: Critical Vulnerabilities in auth-service"
-      body: "CRITICAL vulnerabilities found in auth-service Docker image."
       service-name: auth-service
-      artifact-name: trivy-auth-service
     secrets:
       BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+      ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
 
   # ─── Publish Docker Image (Tag + Build + Push) ───
   publish:
