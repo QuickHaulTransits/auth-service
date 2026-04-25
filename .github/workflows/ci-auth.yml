@@ -69,3 +69,4 @@ jobs:
               "subject": "🚨 Critical: Security or Quality Failure in Auth Service",
               "htmlContent": "<h3>Security / Quality Alert</h3><p>A failure was detected by <b>SonarQube</b>, <b>Snyk</b>, or <b>Trivy</b> during the CI build for <b>auth-service</b>.</p><p>Please check the <a href=\"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\">GitHub Actions Logs</a> immediately to resolve the vulnerabilities or code quality issues.</p>"
             }'
+##
