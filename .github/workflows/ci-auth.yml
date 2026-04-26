@@ -5,7 +5,7 @@ on:
     branches:
       - develop
       - main
-      # - feature/ci-auth
+      - feature/ci-auth
   pull_request:
     branches:
       - develop
@@ -43,6 +43,8 @@ jobs:
     uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_notify.yml@feature/templates
     with:
       service-name: auth-service
+      subject: "🚨 Snyk Critical Vulnerabilities: Auth Service"
+      body: "Critical vulnerabilities were detected by Snyk in the auth-service dependencies. Please review the security report."
     secrets:
       BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
       ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
@@ -63,6 +65,8 @@ jobs:
     uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_notify.yml@feature/templates
     with:
       service-name: auth-service
+      subject: "🚨 Trivy Critical Vulnerabilities: Auth Service"
+      body: "Critical vulnerabilities were detected by Trivy in the auth-service container image. Please check the scan results."
     secrets:
       BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
       ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
