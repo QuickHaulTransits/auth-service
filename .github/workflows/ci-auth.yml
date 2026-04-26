@@ -20,8 +20,6 @@ jobs:
   # 1. Code Quality (SonarQube)
   sonarqube:
     uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_sonarqube.yml@feature/templates
-    with:
-      service-path: .
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
