@@ -1,42 +1,67 @@
-name: CI — Auth Service
+name: Auth Service Production CI
+
+permissions:
+  contents: read
+  packages: write
 
 on:
   push:
-    branches:
+    branches: 
+      - main 
       - develop
-      - main
       - feature/ci-auth
   pull_request:
-    branches:
+    branches: 
+      - main 
       - develop
-      - main
-      # - feature/ci-auth
-
-permissions:
-  contents: write
-  packages: write
 
 jobs:
-  # 1. Code Quality (SonarQube)
+  # 1. Unit Tests & Coverage
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov httpx
+          
+      - name: Run tests with coverage
+        run: |
+          python -m pytest --cov=. --cov-report=xml
+          
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+
+  # 2. Code Quality (SonarQube)
   sonarqube:
+    needs: test
     uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_sonarqube.yml@feature/templates
-    with:
-      service-path: .
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
-  # 2. Dependency Scan (Snyk)
+  # 3. Dependency Scan (Snyk)
   snyk:
     needs: sonarqube
     uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_snyk-python.yml@feature/templates
-    with:
-      service-name: auth-service
-      service-path: .
     secrets:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
-  # 3. Build & Push to GHCR
+  # 4. Build & Push
   ghcr:
     needs: [sonarqube, snyk]
     if: github.event_name == 'push'
@@ -47,7 +72,7 @@ jobs:
       DOCKER_USERNAME: ${{ github.actor }}
       DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
-  # 4. Container Scan (Trivy)
+  # 5. Container Scan (Trivy)
   trivy:
     needs: ghcr
     if: github.event_name == 'push'
@@ -58,15 +83,14 @@ jobs:
       DOCKER_USERNAME: ${{ github.actor }}
       DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
-  # 5. Failure Notification
+  # 6. Failure Notification
   notification:
     needs: [sonarqube, snyk, ghcr, trivy]
     if: failure()
     uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_notify.yml@feature/templates
     with:
-      service-name: auth-service
-      subject: "🚨 CI/CD Failure: Auth Service"
-      body: "The pipeline for auth-service has failed. Please review the logs and security scans."
+      subject: "CI/CD Failure: Auth Service"
+      body: "The production pipeline for auth-service has failed. Please check the GitHub Actions logs for details."
     secrets:
       BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
       ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
