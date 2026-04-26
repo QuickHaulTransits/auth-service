@@ -12,6 +12,7 @@ on:
       - main
 permissions:
   contents: write
+  packages: write
 
 jobs:
   sast:
@@ -66,16 +67,16 @@ jobs:
       BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
       ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
 
-  # ─── Publish Docker Image (Tag + Build + Push) ───
-  publish:
+  # ─── Publish Docker Image to GHCR ───
+  ghcr:
     if: github.event_name == 'push'
     uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_docker-publish.yml@feature/templates
     with:
       service-name: auth-service
       environment: ${{ github.ref_name }}
     secrets:
-      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-      DOCKER_PASSWORD: ${{ secrets.DOCKER_TOKEN }}
+      DOCKER_USERNAME: ${{ github.actor }}
+      DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
   # # ──── Update Helm Chart (CD) ────
   # cd:
