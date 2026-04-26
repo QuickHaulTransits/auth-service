@@ -3,6 +3,7 @@ name: Auth Service Production CI
 permissions:
   contents: read
   packages: write
+  id-token: write
 
 on:
   push:
