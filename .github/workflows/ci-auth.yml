@@ -10,69 +10,35 @@ on:
     branches:
       - develop
       - main
+      - feature/ci-auth
+
 permissions:
   contents: write
   packages: write
 
 jobs:
-  sast:
-    if: github.event_name == 'pull_request'
-    uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_sast.yml@feature/templates
+  # 1. Code Quality (SonarQube)
+  sonarqube:
+    uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_sonarqube.yml@feature/templates
     with:
       service-path: .
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      SONAR_URL: ${{ secrets.SONAR_HOST_URL }}
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
-  # ─── SCA (Snyk) ───
-  sca:
-    needs: [sast]
-    if: github.event_name == 'pull_request'
-    uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_sca.yml@feature/templates
+  # 2. Dependency Scan (Snyk)
+  snyk:
+    needs: sonarqube
+    uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_snyk-python.yml@feature/templates
     with:
       service-name: auth-service
       service-path: .
-      runtime: python
     secrets:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
-  # ─── Notify: Snyk Criticals ───
-  notify-snyk:
-    needs: [sca]
-    if: needs.sca.outputs.critical-found == 'true'
-    uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_notify.yml@feature/templates
-    with:
-      service-name: auth-service
-      subject: "🚨 Snyk Critical Vulnerabilities: Auth Service"
-      body: "Critical vulnerabilities were detected by Snyk in the auth-service dependencies. Please review the security report."
-    secrets:
-      BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
-      ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
-
-  # ─── Temp Docker Build + Trivy Scan ───
-  build:
-    needs: [sast, sca]
-    if: github.event_name == 'pull_request'
-    uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_docker-build.yml@feature/templates
-    with:
-      service-name: auth-service
-      service-path: .
-
-  # ─── Notify: Trivy Criticals ───
-  notify-trivy:
-    needs: [build]
-    if: needs.build.outputs.trivy-critical == 'true'
-    uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_notify.yml@feature/templates
-    with:
-      service-name: auth-service
-      subject: "🚨 Trivy Critical Vulnerabilities: Auth Service"
-      body: "Critical vulnerabilities were detected by Trivy in the auth-service container image. Please check the scan results."
-    secrets:
-      BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
-      ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
-
-  # ─── Publish Docker Image to GHCR ───
+  # 3. Build & Push to GHCR
   ghcr:
+    needs: [sonarqube, snyk]
     if: github.event_name == 'push'
     uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_docker-publish.yml@feature/templates
     with:
@@ -82,14 +48,15 @@ jobs:
       DOCKER_USERNAME: ${{ github.actor }}
       DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
-  # # ──── Update Helm Chart (CD) ────
-  # cd:
-  #   needs: [publish]
-  #   if: needs.publish.result == 'success'
-  #   uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_cd-template.yml@main
-  #   with:
-  #     service-name: auth-service
-  #     image-tag: ${{ needs.publish.outputs.image-tag }}
-  #     environment: ${{ github.ref_name }}
-  #   secrets:
-  #     HELM_REPO_PAT: ${{ secrets.HELM_REPO_PAT }}
+  # 4. Failure Notification
+  notification:
+    needs: [sonarqube, snyk, ghcr]
+    if: failure()
+    uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_notify.yml@feature/templates
+    with:
+      service-name: auth-service
+      subject: "🚨 CI/CD Failure: Auth Service"
+      body: "The pipeline for auth-service has failed. Please review the logs and security scans."
+    secrets:
+      BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+      ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
