@@ -10,7 +10,7 @@ on:
     branches:
       - develop
       - main
-      - feature/ci-auth
+      # - feature/ci-auth
 
 permissions:
   contents: write
@@ -40,17 +40,27 @@ jobs:
   ghcr:
     needs: [sonarqube, snyk]
     if: github.event_name == 'push'
-    uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_docker-publish.yml@feature/templates
+    uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_docker-ci.yml@feature/templates
     with:
-      service-name: auth-service
-      environment: ${{ github.ref_name }}
+      image-name: quickhaul-auth
     secrets:
       DOCKER_USERNAME: ${{ github.actor }}
       DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
-  # 4. Failure Notification
+  # 4. Container Scan (Trivy)
+  trivy:
+    needs: ghcr
+    if: github.event_name == 'push'
+    uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_trivy.yml@feature/templates
+    with:
+      image-name: quickhaul-auth
+    secrets:
+      DOCKER_USERNAME: ${{ github.actor }}
+      DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
+  # 5. Failure Notification
   notification:
-    needs: [sonarqube, snyk, ghcr]
+    needs: [sonarqube, snyk, ghcr, trivy]
     if: failure()
     uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_notify.yml@feature/templates
     with:
