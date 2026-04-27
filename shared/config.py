@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 120
     mongo_uri: str = "mongodb://localhost:27017"
     mongo_db_name: str = "transport_booking"
+    mongo_root_username: str = ""
+    mongo_root_password: str = ""
     redis_url: str = "redis://localhost:6379/0"
     smtp_enabled: bool = False
     smtp_host: str = "127.0.0.1"

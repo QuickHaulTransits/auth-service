@@ -11,7 +11,18 @@ redis_client: Optional[Redis] = None
 async def connect_to_db():
     global mongo_client, database, redis_client
     try:
-        mongo_client = AsyncIOMotorClient(settings.mongo_uri, serverSelectionTimeoutMS=5000)
+        uri = settings.mongo_uri
+        # Inject credentials if provided and not already in URI
+        if settings.mongo_root_username and settings.mongo_root_password:
+            if "@" not in uri:
+                # Assuming uri starts with mongodb://
+                prefix = "mongodb://"
+                if uri.startswith(prefix):
+                    rest = uri[len(prefix):]
+                    uri = f"{prefix}{settings.mongo_root_username}:{settings.mongo_root_password}@{rest}"
+        
+        print(f"Connecting to MongoDB at: {uri.split('@')[-1] if '@' in uri else uri}")
+        mongo_client = AsyncIOMotorClient(uri, serverSelectionTimeoutMS=5000)
         database = mongo_client[settings.mongo_db_name]
         # Check connection
         await mongo_client.admin.command('ping')
