@@ -11,6 +11,7 @@ on:
       - main 
       - develop
       - feature/ci-auth
+      
   pull_request:
     branches: 
       - main 
