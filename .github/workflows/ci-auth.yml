@@ -95,3 +95,17 @@ jobs:
     secrets:
       BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
       ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
+
+  # 7. trigger CD pipeline (GitOps)
+  cd:
+    needs: [ghcr, trivy]  # Must wait for docker push and successful trivy scan!
+    if: github.event_name == 'push'
+    # IMPORTANT: Replace "_cd.yml" with whatever you actually named the CD template file in QuickHaulTransits/quickhaul-templates
+    uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_cd.yml@feature/templates 
+    with:
+      service-name: auth-service
+      image-tag: ${{ github.sha }}
+      # This dynamically routes updates to environments/dev if on develop, and environments/main if on main
+      environment: ${{ github.ref == 'refs/heads/main' && 'main' || 'develop' }}
+    secrets:
+      HELM_REPO_PAT: ${{ secrets.HELM_REPO_PAT }}
