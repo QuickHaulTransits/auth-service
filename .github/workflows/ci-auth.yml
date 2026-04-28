@@ -101,7 +101,7 @@ jobs:
     needs: [ghcr, trivy]  # Must wait for docker push and successful trivy scan!
     if: github.event_name == 'push'
     # IMPORTANT: Replace "_cd.yml" with whatever you actually named the CD template file in QuickHaulTransits/quickhaul-templates
-    uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_ci-template.yml@feature/templates 
+    uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_cd-template.yml@feature/templates 
     with:
       service-name: auth-service
       image-tag: ${{ github.sha }}
