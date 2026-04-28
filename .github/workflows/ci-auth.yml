@@ -109,4 +109,3 @@ jobs:
       environment: ${{ github.ref == 'refs/heads/main' && 'main' || 'develop' }}
     secrets:
       HELM_REPO_PAT: ${{ secrets.HELM_REPO_PAT }}
-      ## Regenerated the PAT 
