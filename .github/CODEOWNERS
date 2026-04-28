@@ -1,0 +1,5 @@
+# This file defines the CODEOWNERS for the auth-service repository.
+# Rules are evaluated from top to bottom.
+
+# Assign the entire repository to Sath2003 by default
+* @Sath2003

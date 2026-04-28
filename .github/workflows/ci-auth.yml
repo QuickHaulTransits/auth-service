@@ -1,0 +1,112 @@
+name: Auth Service Production CI
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+on:
+  push:
+    branches: 
+      - main 
+      - develop
+      - feature/ci-auth
+      
+  pull_request:
+    branches: 
+      - main 
+      - develop
+
+jobs:
+  # 1. Unit Tests & Coverage
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov httpx
+          
+      - name: Run tests with coverage
+        run: |
+          python -m pytest --cov=. --cov-report=xml
+          
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+
+  # 2. Code Quality (SonarQube)
+  sonarqube:
+    needs: test
+    uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_sonarqube.yml@feature/templates
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+  # 3. Dependency Scan (Snyk)
+  snyk:
+    needs: sonarqube
+    uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_snyk-python.yml@feature/templates
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+  # 4. Build & Push
+  ghcr:
+    needs: [sonarqube, snyk]
+    if: github.event_name == 'push'
+    uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_docker-ci.yml@feature/templates
+    with:
+      image-name: quickhaul-auth
+    secrets:
+      DOCKER_USERNAME: ${{ github.actor }}
+      DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
+  # 5. Container Scan (Trivy)
+  trivy:
+    needs: ghcr
+    if: github.event_name == 'push'
+    uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_trivy.yml@feature/templates
+    with:
+      image-name: quickhaul-auth
+    secrets:
+      DOCKER_USERNAME: ${{ github.actor }}
+      DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
+  # 6. Failure Notification
+  notification:
+    needs: [sonarqube, snyk, ghcr, trivy]
+    if: failure()
+    uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_notify.yml@feature/templates
+    with:
+      subject: "CI/CD Failure: Auth Service"
+      body: "The production pipeline for auth-service has failed. Please check the GitHub Actions logs for details."
+    secrets:
+      BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+      ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
+
+  # 7. trigger CD pipeline (GitOps)
+  cd:
+    needs: [ghcr, trivy]  # Must wait for docker push and successful trivy scan!
+    if: github.event_name == 'push'
+    # IMPORTANT: Replace "_cd.yml" with whatever you actually named the CD template file in QuickHaulTransits/quickhaul-templates
+    uses: QuickHaulTransits/quickhaul-templates/.github/workflows/_cd-template.yml@feature/templates 
+    with:
+      service-name: auth-service
+      image-tag: ${{ github.sha }}
+      # This dynamically routes updates to environments/dev if on develop, and environments/main if on main
+      environment: ${{ github.ref == 'refs/heads/main' && 'main' || 'develop' }}
+    secrets:
+      HELM_REPO_PAT: ${{ secrets.HELM_REPO_PAT }}
